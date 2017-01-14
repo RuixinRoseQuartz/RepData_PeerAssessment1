@@ -1,0 +1,86 @@
+#Repoducible Research Week 2 Assignment
+
+The data for this assignnment was forked and cloned from the [RepData_PeerAssesment1 Repo](https://github.com/rdpeng/RepData_PeerAssessment1)
+
+Loaded and preprocessed the data as well as looked at a summary of it.
+```{r setoptions, echo=TRUE}
+data <- read.csv("/home/ruixin/RepData_PeerAssessment1/activity.csv")
+summary(data)
+```
+
+###What is the mean total number of steps taken per day?
+**Calculate the total number of steps taken per day**
+```{r}
+library(dplyr)
+dataNoNA <- data[complete.cases(data),]
+dataNoNAsum <- aggregate(. ~ date, dataNoNA, sum)
+```
+
+**Make a histogram of the total number of steps taken each day**
+```{r}
+hist(dataNoNAsum$steps, main = "Total Steps Per Day", xlab = "Steps")
+```
+
+**Calculate and report the mean and median of the total number of steps taken per day**
+```{r}
+summary(dataNoNAsum)
+```
+The mean of the total number of steps taken per day is 10766 and the median is 10765.
+
+###What is the average daily activity pattern?
+**Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)**
+```{r}
+dataNoNAmean <- aggregate(steps ~ interval, dataNoNA, mean)
+plot(dataNoNAmean, type = "l", main = "Average Daily Activity")
+summary(dataNoNAmean)
+```
+
+**Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?**
+```{r}
+dataNoNAmean$interval[which.max(dataNoNAmean$steps)]
+```
+The interval with the highest number of steps is interval 835.
+
+###Imputing missing values
+**Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)**
+```{r}
+dataincomplete <- data[!complete.cases(data),]
+summary(dataincomplete)
+```
+There are 2304 missing values.
+
+**Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated.**
+I will fill in the NAs with the mean of intervals.
+```{r}
+compdata <- data
+for (i in 1:nrow(compdata)) {
+    if(is.na(compdata$steps[i])) {
+        val <-dataNoNAmean$steps[which(dataNoNAmean$interval == compdata$interval[i])]
+        compdata$steps[i] <- val 
+    }
+}
+```
+
+**Make a histogram of the total number of steps taken each day**
+```{r}
+compdatasum <- aggregate(.~ date, compdata, sum)
+hist(compdatasum$steps, main = "Total Steps Per Day", xlab = "Steps")
+```
+** Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?**
+```{r}
+summary(compdata)
+```
+The new mean is 37.38 steps and the median is now 0. Considering the mean was 37.383 and the median was 34.113 in the analysis we did when taking out the missing values, it appear they were more active than they actually were. As well, seeing there are 2304 missing values, it shows it can and has caused errors in our analyssi and lead to false assumptions.
+
+###Are there differences in activity patterns between weekdays and weekends?
+**Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.**
+```{r}
+compdata["weekday"] <-NA
+compdata$weekday <-weekdays(as.Date(compdata$date))
+compdata$weekday.type <- ifelse(compdata$weekday == "Saturday" | compdata$weekday == "Sunday", "Weekend", "Weekday")
+finaldata <- select(compdata, weekday.type, steps, interval)
+finaldatamean <- aggregate(steps ~ interval+weekday.type, finaldata, mean)
+library(lattice)
+xyplot(steps ~ interval | weekday.type, finaldatamean , type = "l", layout = c(1,2))
+```
+Looking out the two tables, it does show there are some similarities in the person's activity between the Weekday and the Weekday. A similarity is they are most active in the morning then slow down around noon. A difference is they are more active in the Weekend compared to the Weekday. 
